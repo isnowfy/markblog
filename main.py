@@ -24,6 +24,15 @@ args = {'arghelp': 'arguments help',
         'server': 'preview the html'}
 
 
+def dateformat(value, format_str):
+    if isinstance(value, unicode):
+        value = value.encode('utf-8')
+    return value.strftime(format_str).format(value.day)
+
+
+env.filters['dateformat'] = dateformat
+
+
 def makedir(path, ifrm=False):
     if ifrm:
         if os.path.exists(path):
@@ -87,8 +96,7 @@ def render(template, **params):
 
 def get_content(md, template, **params):
     html = markdown(md, markdown_options)
-    params.update({'html': html})
-    return render(template, **params)
+    return html
 
 
 def get_single(path, url, ptype='post'):
@@ -106,27 +114,28 @@ def feeds(posts):
         blogs.append(get_single(p['path'], p['url']))
     makedir('blog')
     with open('blog/atom.xml', 'w') as f:
-        f.write(render('atom.xml', {'blogs': blogs, 'now': datetime.now()}))
+        f.write(render('atom.xml', blogs=blogs, now=datetime.now()))
 
 
 def walk(path):
     if not os.path.exists(path):
         return []
     files = map(lambda x: os.path.join(path, x), os.listdir(path))
-    htmls = filter(lambda x: x.endswith('.html'), files)
+    mds = filter(lambda x: x.endswith('.md'), files)
     dirs = filter(lambda x: os.path.isdir(x), files)
     ret = []
-    if htmls:
+    if mds:
         ret.append(path)
     for d in dirs:
-        ret.extends(walk(d))
+        ret.extend(walk(d))
     return ret
 
 
 def gen(posts, ptype):
     for p in posts:
-        makedir(p['path'])
-        with open(p['path'] + '/index.html', 'w') as f:
+        path = 'blog/' + p['path'][5:]
+        makedir(path)
+        with open(path + '/index.html', 'w') as f:
             conf = get_single(p['path'], p['url'], ptype)
             f.write(render(ptype + '.html', **conf))
 
@@ -137,8 +146,8 @@ def update():
     posts = [{'path': path, 'url': '/' + path} for path in posts_path]
     pages = [{'path': path, 'url': '/' + path} for path in pages_path]
     feeds(posts)
-    gen(posts)
-    gen(pages)
+    gen(posts, 'post')
+    gen(pages, 'page')
 
 
 if __name__ == '__main__':

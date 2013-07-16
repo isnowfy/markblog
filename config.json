@@ -1,9 +1,9 @@
 {
-'name': 'isnowfy blog',
-'site_url': '',
-'description': '',
-'keywords': '',
-'author': 'isnowfy',
-'number_of_posts_per_page': 5,
-'disqus_shortname': '',
+"name": "isnowfy blog",
+"site_url": "",
+"description": "",
+"keywords": "",
+"author": "isnowfy",
+"number_of_posts_per_page": 5,
+"disqus_shortname": ""
 }
