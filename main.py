@@ -13,11 +13,8 @@ from markdown import markdown
 
 env = jinja2.Environment(loader=jinja2.FileSystemLoader('templates'))
 markdown_options = ['extra', 'codehilite']
-post_config = {'author': '',
-               'date': '',
-               'title': '',
-               'tags': 'split with space'}
 args = {'arghelp': 'arguments help',
+        'init': 'initialize the blog folder',
         'post': 'create new post',
         'page': 'create new page',
         'update': 'generate the static html',
@@ -31,6 +28,10 @@ def dateformat(value, format_str):
 
 
 env.filters['dateformat'] = dateformat
+
+
+def get_gconf():
+    return json.loads(open('blog/config.json', 'r').read())
 
 
 def makedir(path, ifrm=False):
@@ -59,7 +60,15 @@ def copy(src, dst, isrm=False):
         shutil.copyfile(src, dst)
 
 
+def init():
+    makedir('blog')
+    copy('config.json', 'blog/config.json')
+    copy('templates/css', 'blog/css')
+    copy('templates/js', 'blog/js')
+
+
 def server():
+    os.chdir('blog')
     handler = SimpleHTTPServer.SimpleHTTPRequestHandler
     httpd = SocketServer.TCPServer(('', 8000), handler)
     print 'please visit http://127.0.0.1:8000'
@@ -73,7 +82,7 @@ def arghelp():
 
 
 def post(*args):
-    path = 'post/%s' % args[0]
+    path = 'blog/src/post/%s' % args[0]
     makedir(path)
     copy('post.json', path + '/post.json')
     with open(path + '/post.md', 'w') as f:
@@ -81,7 +90,7 @@ def post(*args):
 
 
 def page(*args):
-    path = 'page/%s' % args[0]
+    path = 'blog/src/page/%s' % args[0]
     makedir(path)
     copy('post.json', path + '/page.json')
     with open(path + '/page.md', 'w') as f:
@@ -89,7 +98,7 @@ def page(*args):
 
 
 def render(template, **params):
-    global_conf = json.loads(open('config.json', 'r').read())
+    global_conf = get_gconf()
     params.update(**global_conf)
     return env.get_template(template).render(**params)
 
@@ -101,7 +110,7 @@ def get_content(md, template, **params):
 
 def get_single(path, url, ptype='post'):
     conf = json.loads(open(path + '/' + ptype + '.json', 'r').read())
-    conf.update({'url': url})
+    conf.update({'path': path, 'url': url})
     md = open(path + '/' + ptype + '.md', 'r').read()
     content = get_content(md, ptype + '.html', **conf)
     conf.update({'content': content})
@@ -112,7 +121,6 @@ def feeds(posts):
     blogs = []
     for p in posts[:10]:
         blogs.append(get_single(p['path'], p['url']))
-    makedir('blog')
     with open('blog/atom.xml', 'w') as f:
         f.write(render('atom.xml', blogs=blogs, now=datetime.now()))
 
@@ -133,21 +141,50 @@ def walk(path):
 
 def gen(posts, ptype):
     for p in posts:
-        path = 'blog/' + p['path'][5:]
+        path = 'blog/' + p['path'][14:]
         makedir(path)
+        if os.path.exists(p['path'] + '/img'):
+            copy(p['path'] + '/img', path + '/img')
         with open(path + '/index.html', 'w') as f:
             conf = get_single(p['path'], p['url'], ptype)
             f.write(render(ptype + '.html', **conf))
 
 
+def home(path, template, posts, **params):
+    gconf = get_gconf()
+    per_page = gconf['number_of_posts_per_page']
+    total_page = (len(posts) - 1) / per_page + 1
+    for i in range(total_page):
+        tmp_path = path
+        if i > 0:
+            tmp_path = path + ('/page/%d' % (i + 1))
+        makedir(tmp_path)
+        offset = i * per_page
+        limit = offset + per_page
+        ps = [get_single(p['path'], p['url']) for p in posts[offset:limit]]
+        with open(tmp_path + '/index.html', 'w') as f:
+            params.update({'posts': ps, 'total': len(posts)})
+            f.write(render(template, **params))
+
+
 def update():
-    posts_path = walk('post')
-    pages_path = walk('page')
+    posts_path = walk('blog/src/post')
+    pages_path = walk('blog/src/page')
     posts = [{'path': path, 'url': '/' + path} for path in posts_path]
     pages = [{'path': path, 'url': '/' + path} for path in pages_path]
     feeds(posts)
     gen(posts, 'post')
     gen(pages, 'page')
+    home('blog', 'home.html', posts)
+    tags = {}
+    for p in posts:
+        conf = get_single(p['path'], p['url'])
+        for tag in conf['tags'].split():
+            if tag not in tags:
+                tags[tag] = []
+            tags[tag].append(conf)
+    for tag, posts in tags.iteritems():
+        home('blog/tag/%s' % tag, 'tag.html', posts, tag=tag)
 
 
 if __name__ == '__main__':
