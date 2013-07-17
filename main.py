@@ -54,17 +54,19 @@ def copy(src, dst, isrm=False):
         except:
             pass
     else:
-        if isrm:
-            if os.path.exists(dst):
+        if os.path.exists(dst):
+            if isrm:
                 os.remove(dst)
-        shutil.copyfile(src, dst)
+                shutil.copyfile(src, dst)
+        else:
+            shutil.copyfile(src, dst)
 
 
 def init():
     makedir('blog')
     copy('config.json', 'blog/config.json')
-    copy('templates/css', 'blog/css')
-    copy('templates/js', 'blog/js')
+    copy('templates/css', 'blog/css', True)
+    copy('templates/js', 'blog/js', True)
 
 
 def server():
@@ -85,16 +87,18 @@ def post(*args):
     path = 'blog/src/post/%s' % args[0]
     makedir(path)
     copy('post.json', path + '/post.json')
-    with open(path + '/post.md', 'w') as f:
-        f.write('##hello world!')
+    if not os.path.exists(path + '/post.md'):
+        with open(path + '/post.md', 'w') as f:
+            f.write('##hello world!')
 
 
 def page(*args):
     path = 'blog/src/page/%s' % args[0]
     makedir(path)
     copy('post.json', path + '/page.json')
-    with open(path + '/page.md', 'w') as f:
-        f.write('##hello world!')
+    if not os.path.exists(path + '/page.md'):
+        with open(path + '/page.md', 'w') as f:
+            f.write('##hello world!')
 
 
 def render(template, **params):
@@ -167,6 +171,18 @@ def home(path, template, posts, **params):
             f.write(render(template, **params))
 
 
+def search(posts):
+    ret = []
+    for p in posts:
+        conf = get_single(p['path'], p['url'])
+        ret.append({'title': conf['title'],
+                    'tags': conf['tags'],
+                    'date': conf['date'],
+                    'url': conf['url']})
+    with open('blog/search.json', 'w') as f:
+        f.write(json.dumps(ret))
+
+
 def update():
     posts_path = walk('blog/src/post')
     pages_path = walk('blog/src/page')
@@ -175,6 +191,7 @@ def update():
     feeds(posts)
     gen(posts, 'post')
     gen(pages, 'page')
+    search(posts)
     home('blog', 'home.html', posts)
     tags = {}
     for p in posts:
