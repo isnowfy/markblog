@@ -1,7 +1,40 @@
 {% extends 'base.html' %}
-
-{% block title %}{{ title }}{% endblock %}
-
+{% block title %}{{ tag }}{% endblock %}
+{% block pages %}
+<li><a href="/">home</a></li>
+{% for page in pages %}
+    <li><a href="{{ page.url }}">{{ page.title }}</a></li>
+{% endfor %}
+{% endblock %}
 {% block content %}
-{{ content }}
+<div class="main">
+    {% for post in posts %}
+        <div class="item">
+            <div class="date">
+                <div class="little">
+                </div>
+                {{ post.date }}
+            </div>
+            <div class="title">
+                <h2>
+                    <a href="{{ post.url }}">{{ post.title }}</a>
+                </h2>
+            </div>
+        </div>
+    {% endfor %}
+    <div class="pages">
+        Pages:
+        {% for p in total %}
+        {% if p==now %}
+        <span class="selected">{{ p }}</span>
+        {% else %}
+        {% if p == 1 %}
+        <a href="/">{{ p }}</a>
+        {% else %}
+        <a href="/page/{{ p }}">{{ p }}</a>
+        {% endif %}
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
 {% endblock %}

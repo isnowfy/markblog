@@ -1,7 +1,21 @@
 {% extends 'base.html' %}
 
 {% block title %}{{ title }}{% endblock %}
+{% block pages %}
+<li><a href="/">home</a></li>
+{% for page in pages %}
+    {% if title==page.title %}
+    <li><span class="selected">{{ page.title }}</span></li>
+    {% else %}
+    <li><a href="{{ page.url }}">{{ page.title }}</a></li>
+    {% endif %}
+{% endfor %}
+{% endblock %}
 
 {% block content %}
+<div class="main">
+<div class="entry">
 {{ content }}
+</div>
+</div>
 {% endblock %}

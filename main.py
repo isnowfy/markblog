@@ -2,6 +2,7 @@
 
 import os
 import json
+import time
 import sys
 import shutil
 import SocketServer
@@ -104,7 +105,7 @@ def page(*args):
 def render(template, **params):
     global_conf = get_gconf()
     params.update(**global_conf)
-    return env.get_template(template).render(**params)
+    return env.get_template(template).render(**params).encode('utf-8')
 
 
 def get_content(md, template, **params):
@@ -118,13 +119,13 @@ def get_single(path, url, ptype='post'):
     md = open(path + '/' + ptype + '.md', 'r').read()
     content = get_content(md, ptype + '.html', **conf)
     conf.update({'content': content})
+    if conf['tags']:
+        conf['tags'] = conf['tags'].split()
     return conf
 
 
 def feeds(posts):
-    blogs = []
-    for p in posts[:10]:
-        blogs.append(get_single(p['path'], p['url']))
+    blogs = posts[:10]
     with open('blog/atom.xml', 'w') as f:
         f.write(render('atom.xml', blogs=blogs, now=datetime.now()))
 
@@ -143,21 +144,21 @@ def walk(path):
     return ret
 
 
-def gen(posts, ptype):
+def gen(posts, ptype, pages=[]):
     for p in posts:
         path = 'blog/' + p['path'][14:]
         makedir(path)
         if os.path.exists(p['path'] + '/img'):
             copy(p['path'] + '/img', path + '/img')
         with open(path + '/index.html', 'w') as f:
-            conf = get_single(p['path'], p['url'], ptype)
-            f.write(render(ptype + '.html', **conf))
+            f.write(render(ptype + '.html', pages=pages, **p))
 
 
-def home(path, template, posts, **params):
+def home(path, template, posts, pages, **params):
     gconf = get_gconf()
     per_page = gconf['number_of_posts_per_page']
     total_page = (len(posts) - 1) / per_page + 1
+    total = range(1, total_page+1)
     for i in range(total_page):
         tmp_path = path
         if i > 0:
@@ -165,10 +166,10 @@ def home(path, template, posts, **params):
         makedir(tmp_path)
         offset = i * per_page
         limit = offset + per_page
-        ps = [get_single(p['path'], p['url']) for p in posts[offset:limit]]
+        ps = posts[offset:limit]
         with open(tmp_path + '/index.html', 'w') as f:
-            params.update({'posts': ps, 'total': len(posts)})
-            f.write(render(template, **params))
+            params.update({'posts': ps, 'total': total, 'now': i+1})
+            f.write(render(template, pages=pages, **params))
 
 
 def search(posts):
@@ -186,22 +187,26 @@ def search(posts):
 def update():
     posts_path = walk('blog/src/post')
     pages_path = walk('blog/src/page')
-    posts = [{'path': path, 'url': '/' + path} for path in posts_path]
-    pages = [{'path': path, 'url': '/' + path} for path in pages_path]
+    posts = [{'path': path, 'url': '/' + path[14:]} for path in posts_path]
+    pages = [{'path': path, 'url': '/' + path[14:]} for path in pages_path]
+    pages = [get_single(p['path'], p['url'], 'page') for p in pages]
+    posts = [get_single(p['path'], p['url'], 'post') for p in posts]
+    s2d = lambda x: time.strptime(x['date'], '%Y-%m-%d %H:%M') 
+    posts = sorted(posts, reverse=True, key=s2d)
+    pages = sorted(pages, reverse=True, key=s2d)
     feeds(posts)
-    gen(posts, 'post')
-    gen(pages, 'page')
+    gen(posts, 'post', pages)
+    gen(pages, 'page', pages)
     search(posts)
-    home('blog', 'home.html', posts)
+    home('blog', 'home.html', posts, pages)
     tags = {}
     for p in posts:
-        conf = get_single(p['path'], p['url'])
-        for tag in conf['tags'].split():
+        for tag in p['tags']:
             if tag not in tags:
                 tags[tag] = []
-            tags[tag].append(conf)
+            tags[tag].append(p)
     for tag, posts in tags.iteritems():
-        home('blog/tag/%s' % tag, 'tag.html', posts, tag=tag)
+        home('blog/tag/%s' % tag, 'tag.html', posts, pages, tag=tag)
 
 
 if __name__ == '__main__':

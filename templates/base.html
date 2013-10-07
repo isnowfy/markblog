@@ -1,19 +1,48 @@
-<!doctype html>
+<!DOCTYPE HTML>
 <html>
-  <head>
-    <meta charset=utf-8>
+<head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <meta name="Keywords" content="{{ keywords }}"/>
     <meta name="Description" content="{{ desciption }}"/>
-    <title>{% block title %}{% endblock %}</title>
+    <title>{% block title %}{{ name }}{% endblock %}</title>
     <link rel="shortcut icon" href="/static/favicon.png"/>
-    <link href="/atom.xml" rel="alternate" title="{{ site_name }}" type="application/atom+xml">
-  </head>
-  <body>
-
-{% block content %}
-{% endblock %}
-
-{% block extrascript %}{% endblock %}
-  </body>
+    <link href="/atom.xml" rel="alternate" title="{{ name }}" type="application/    atom+xml">
+    <link rel="stylesheet" type="text/css" href="/css/style.css" />
+    <link rel="stylesheet" type="text/css" href="/css/entry.css" />
+    <link rel="stylesheet" type="text/css" href="/css/prism.css" />
+</head>
+<body>
+	<div class="wrap-header">
+		<a href="/" class="logo">
+			<h1>
+				{{ name }}
+			</h1>
+		</a>
+		<div class="header">
+			<ul>
+                {% block pages %}
+				<li>
+					<span class="selected">
+						home
+					</span>
+				</li>
+                {% for page in pages %}
+				<li>
+					<a href="{{ page.url }}">
+						{{ page.title }}
+					</a>
+				</li>
+                {% endfor %}
+                {% endblock %}
+			</ul>
+		</div>
+	</div>
+    {% block content %}
+    {% endblock %}
+	<div class="footer">
+		<p>© Copyright 2013 by isnowfy, Theme by isnowfy</p>
+	</div>
+<script src="/js/prism.js"></script>
+</body>
 </html>

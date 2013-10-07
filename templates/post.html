@@ -1,7 +1,23 @@
 {% extends 'base.html' %}
 
 {% block title %}{{ title }}{% endblock %}
-
+{% block pages %}
+<li><a href="/">home</a></li>
+{% for page in pages %}
+    <li><a href="{{ page.url }}">{{ page.title }}</a></li>
+{% endfor %}
+{% endblock %}
 {% block content %}
+<div class="main">
+<div class="entry">
+<h1>{{ title }}</h1>
+<div class="tag">
+{{ date }}
+{% for tag in tags %}
+<a href="/tag/{{ tag }}">#{{ tag }}</a>
+{% endfor %}
+</div>
 {{ content }}
+</div>
+</div>
 {% endblock %}
